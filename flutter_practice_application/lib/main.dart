@@ -1,115 +1,139 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_practice_application/counter_tab.dart';
+import 'package:tab_switcher/tab_count_icon.dart';
+import 'package:tab_switcher/tab_switcher.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DemoSettings {
+  static bool openTabsInForeground = true;
+  static Brightness brightness = Brightness.light;
+  static VoidCallback rebuildRootWidget = () {};
+}
 
-  // This widget is the root of your application.
+class DemoSettingsPopupButton extends StatelessWidget {
+  final TabSwitcherController controller;
+
+  const DemoSettingsPopupButton({required this.controller, Key? key})
+      : super(key: key);
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
-  }
+  Widget build(BuildContext context) => PopupMenuButton(
+        itemBuilder: (BuildContext context) => [
+          PopupMenuItem<String>(
+            value: 'foreground',
+            child: Text(
+                'Open tabs in background: ${!DemoSettings.openTabsInForeground}'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'theme',
+            child: Text('Toggle theme'),
+          ),
+        ],
+        onSelected: (v) {
+          if (v == "theme") {
+            DemoSettings.brightness = DemoSettings.brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark;
+            DemoSettings.rebuildRootWidget();
+          }
+          if (v == "foreground") {
+            DemoSettings.openTabsInForeground =
+                !DemoSettings.openTabsInForeground;
+          }
+        },
+      );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) => StatefulBuilder(
+        builder: (context, setState) {
+          DemoSettings.rebuildRootWidget = () => setState(() {});
+          return MaterialApp(
+            title: 'Flutter Demo',
+            theme: ThemeData(
+                primarySwatch: Colors.blue,
+                brightness: DemoSettings.brightness),
+            home: const MyHomePage(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      );
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  const MyHomePage({Key? key}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class NewTabButton extends StatelessWidget {
+  final TabSwitcherController controller;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  const NewTabButton({
+    Key? key,
+    required this.controller,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    return IntrinsicWidth(
+        child: MaterialButton(
+      visualDensity: VisualDensity.compact,
+      child: Row(
+        children: const [
+          Icon(Icons.add),
+          SizedBox(width: 8),
+          Text('New tab'),
+        ],
+      ),
+      onPressed: () => controller.pushTab(CounterTab(),
+          foreground: DemoSettings.openTabsInForeground),
+    ));
+  }
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  late TabSwitcherController controller;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: TabSwitcherWidget(
+        controller: controller,
+        appBarBuilder: (context, tab) => tab != null
+            ? AppBar(
+                elevation: 0,
+                title: Text(tab.getTitle()),
+                actions: [
+                  TabCountIcon(controller: controller),
+                  DemoSettingsPopupButton(controller: controller),
+                ],
+              )
+            : AppBar(
+                elevation: 0,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                foregroundColor: Theme.of(context).textTheme.bodyText1!.color,
+                titleSpacing: 8,
+                title: NewTabButton(controller: controller),
+                actions: [
+                  TabCountIcon(controller: controller),
+                  DemoSettingsPopupButton(controller: controller),
+                ],
+              ),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TabSwitcherController();
   }
 }
